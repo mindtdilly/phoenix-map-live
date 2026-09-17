@@ -1,2 +1,86 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Phoenix Map Viewer</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><style>html,body,#map{height:100%;margin:0;background:#09090b;color:#f2f1ee;font:13px system-ui}#bar{position:absolute;z-index:10;left:8px;top:8px;right:8px;display:flex;gap:8px}#bar input{flex:1;background:#121214;border:1px solid #2a2a30;color:#f2f1ee;border-radius:8px;padding:8px}</style></head><body><div id="bar"><input id="q" placeholder="Find place"/></div><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>const m=L.map('map').setView([29.7604,-95.3698],11);L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri'}).addTo(m);L.circleMarker([29.7589,-95.3677],{radius:8,color:'#fff',fillColor:'#3ecf8e',fillOpacity:1,weight:2}).addTo(m).bindPopup('PHX-HOU-01 Downtown');document.getElementById('q').addEventListener('keydown',async e=>{if(e.key!=='Enter')return;const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(e.target.value));const d=await r.json();if(d[0])m.setView([+d[0].lat,+d[0].lon],14);});</script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#09090b" />
+  <title>Phoenix Map Viewer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root{--bg:#09090b;--panel:#121214;--line:#2a2a30;--text:#f2f1ee;--muted:#a8b4c0;--accent:#3d9be9;--gold:#e8a54b}
+    *{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:13px/1.4 system-ui;overflow:hidden}
+    header{height:48px;display:flex;align-items:center;gap:8px;padding:0 8px;border-bottom:1px solid var(--line)}
+    header strong{font-size:13px}header span{color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-left:6px}
+    #q{flex:1;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:0 10px}
+    #map{position:absolute;inset:48px 0 28px;background:#0b0b0d}
+    #tools{position:absolute;top:56px;right:8px;display:flex;flex-direction:column;gap:4px;z-index:20}
+    #tools button,.bm{height:34px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:0 8px;cursor:pointer}
+    #tools button.on{outline:2px solid var(--accent)}
+    #status{position:absolute;bottom:0;left:0;right:0;height:28px;display:flex;align-items:center;gap:10px;padding:0 10px;color:var(--muted);font-size:11px;border-top:1px solid var(--line)}
+    .leaflet-container{background:#0b0b0d;font:inherit}
+    .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text)}
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>Phoenix Map Viewer</strong><span>ArcGIS emulator</span></div>
+    <input id="q" placeholder="Find address or place" />
+    <button class="bm" id="btn-bm">Basemap</button>
+    <button class="bm" id="btn-add">Add layer</button>
+  </header>
+  <div id="map"></div>
+  <div id="tools">
+    <button id="id" class="on">Identify</button>
+    <button id="ml">Distance</button>
+    <button id="ma">Area</button>
+    <button id="home">Houston</button>
+  </div>
+  <div id="status"><span id="st"></span><span id="mode">Identify</span></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const HOU=[29.7604,-95.3698];
+    const BM={
+      imagery:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      streets:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+      topo:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+      dark:"https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+    };
+    const map=L.map("map",{center:HOU,zoom:11,zoomControl:false});
+    let base=L.tileLayer(BM.imagery,{maxZoom:19,attribution:"Tiles © Esri"}).addTo(map);
+    const gfx=L.featureGroup().addTo(map);
+    const nodes=[[29.7589,-95.3677,"PHX-HOU-01 Downtown","#3ecf8e"],[29.9902,-95.3368,"PHX-HOU-02 IAH","#3ecf8e"],[29.6454,-95.2789,"PHX-HOU-03 Hobby","#f5c542"],[29.7079,-95.3984,"PHX-HOU-04 Med Center","#3ecf8e"],[29.7824,-95.6280,"PHX-HOU-05 Energy Corridor","#3ecf8e"]];
+    nodes.forEach(([lat,lng,name,c])=>L.circleMarker([lat,lng],{radius:8,color:"#fff",weight:2,fillColor:c,fillOpacity:.95}).addTo(map).bindPopup(name));
+    L.polygon([[29.52,-95.85],[29.52,-95.10],[30.12,-95.10],[30.12,-95.85]],{color:"#3d9be9",weight:2,fillOpacity:.08}).addTo(map).bindPopup("Houston AOI");
+    let mode="id", pts=[];
+    const setMode=m=>{mode=m;pts=[];document.getElementById("mode").textContent={id:"Identify",ml:"Measure distance",ma:"Measure area"}[m];
+      ["id","ml","ma"].forEach(k=>document.getElementById(k).classList.toggle("on",k===m));};
+    document.getElementById("id").onclick=()=>setMode("id");
+    document.getElementById("ml").onclick=()=>setMode("ml");
+    document.getElementById("ma").onclick=()=>setMode("ma");
+    document.getElementById("home").onclick=()=>map.setView(HOU,11);
+    document.getElementById("btn-bm").onclick=()=>{
+      const keys=Object.keys(BM); const next=keys[(keys.indexOf(Object.keys(BM).find(k=>BM[k]===base._url)||"imagery")+1)%keys.length];
+      map.removeLayer(base); base=L.tileLayer(BM[next],{maxZoom:19,attribution:"Tiles © Esri"}).addTo(map);
+    };
+    document.getElementById("btn-add").onclick=async()=>{
+      const url="https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Major_Cities_/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&resultRecordCount=400&f=geojson";
+      const res=await fetch(url); const json=await res.json();
+      const layer=L.geoJSON(json,{pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:5,color:"#fff",fillColor:"#e8a54b",fillOpacity:.9,weight:1})}).addTo(map);
+      layer.bindPopup(l=>JSON.stringify((l.feature&&l.feature.properties)||{},null,0).slice(0,240));
+      if(layer.getBounds().isValid()) map.fitBounds(layer.getBounds().pad(.1));
+    };
+    map.on("click",e=>{
+      if(mode==="id"){L.popup().setLatLng(e.latlng).setContent(e.latlng.lat.toFixed(5)+", "+e.latlng.lng.toFixed(5)).openOn(map);return;}
+      pts.push(e.latlng);
+      if(mode==="ml"&&pts.length>=2){const d=map.distance(pts[0],pts[pts.length-1]); L.polyline(pts,{color:"#e8a54b"}).addTo(gfx).bindPopup((d/1000).toFixed(2)+" km").openPopup();}
+      if(mode==="ma"&&pts.length>=3){L.polygon(pts,{color:"#e8a54b",fillOpacity:.15}).addTo(gfx);}
+    });
+    map.on("mousemove",e=>{document.getElementById("st").textContent="z"+map.getZoom()+"  "+e.latlng.lat.toFixed(4)+", "+e.latlng.lng.toFixed(4);});
+    document.getElementById("q").addEventListener("keydown",async ev=>{
+      if(ev.key!=="Enter") return;
+      const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(ev.target.value));
+      const d=await r.json(); if(d[0]) map.setView([+d[0].lat,+d[0].lon],14);
+    });
+  </script>
+</body>
+</html>
